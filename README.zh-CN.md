@@ -5,7 +5,7 @@
 
 [English](README.md)
 
-![菜单栏图标](docs/menubar.png)
+![未锁定与锁定状态的菜单栏图标](docs/menubar.png)
 
 ## 为什么需要它
 
@@ -133,16 +133,17 @@
 
 ```
 Sources/
-  main.swift              入口
-  AppDelegate.swift       菜单栏、菜单、系统事件
-  KeyboardLockEngine.swift CGEventTap 拦截引擎
-  StatusIcon.swift        菜单栏图标的状态与绘制
-  PermissionWindow.swift  权限引导窗口
-  SelfTest.swift          命令行自检
-Resources/Info.plist      应用元信息
-Tools/make-icon.swift     应用图标生成
-build.sh                  构建脚本
-release.sh                版本号更新、打包与 GitHub 发布
+  main.swift                     入口
+  AppDelegate.swift              菜单栏、菜单、系统事件
+  KeyboardLockEngine.swift       CGEventTap 拦截引擎
+  StatusIcon.swift               菜单栏图标的状态与绘制
+  PermissionWindow.swift         权限引导窗口
+  SelfTest.swift                 命令行自检
+Resources/Info.plist             应用元信息
+Tools/make-icon.swift            应用图标生成
+Tools/make-readme-figure.swift   README 状态图生成
+build.sh                         构建脚本
+release.sh                       版本号更新、打包与 GitHub 发布
 ```
 
 ## 许可证

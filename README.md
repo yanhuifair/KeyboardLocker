@@ -4,7 +4,7 @@ A menu bar app for macOS that locks every key on your keyboard with a single cli
 
 [中文说明](README.zh-CN.md)
 
-![Menu bar icon](docs/menubar.png)
+![Idle and locked menu bar states](docs/menubar.png)
 
 ## Why
 
@@ -118,16 +118,17 @@ The script bumps `CFBundleShortVersionString` / `CFBundleVersion` in a commit, r
 
 ```
 Sources/
-  main.swift               Entry point
-  AppDelegate.swift        Menu bar, menu, system events
-  KeyboardLockEngine.swift CGEventTap interception
-  StatusIcon.swift         Menu bar icon states and drawing
-  PermissionWindow.swift   Permission onboarding window
-  SelfTest.swift           Command-line self-test
-Resources/Info.plist       App metadata
-Tools/make-icon.swift      App icon generator
-build.sh                   Build script
-release.sh                 Version bump, packaging and GitHub Release
+  main.swift                     Entry point
+  AppDelegate.swift              Menu bar, menu, system events
+  KeyboardLockEngine.swift       CGEventTap interception
+  StatusIcon.swift               Menu bar icon states and drawing
+  PermissionWindow.swift         Permission onboarding window
+  SelfTest.swift                 Command-line self-test
+Resources/Info.plist             App metadata
+Tools/make-icon.swift            App icon generator
+Tools/make-readme-figure.swift   README state diagram generator
+build.sh                         Build script
+release.sh                       Version bump, packaging and GitHub Release
 ```
 
 ## License
