@@ -134,6 +134,14 @@ build.sh                         Build script
 release.sh                       Version bump, packaging and GitHub Release
 ```
 
+## Support
+
+If KeyboardLocker saved you from one more round of accidental keystrokes while cleaning, you can buy me a coffee via WeChat Pay.
+
+<a href="docs/tip.jpg"><img src="docs/tip.jpg" width="240" alt="WeChat Pay tip QR code" /></a>
+
+Thanks for the support!
+
 ## License
 
 [MIT](LICENSE)

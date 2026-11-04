@@ -149,6 +149,14 @@ build.sh                         构建脚本
 release.sh                       版本号更新、打包与 GitHub 发布
 ```
 
+## 赞赏
+
+如果这个工具帮你省下了一次擦键盘时的手忙脚乱，可以扫下面的微信赞赏码请我喝杯咖啡。
+
+<a href="docs/tip.jpg"><img src="docs/tip.jpg" width="240" alt="微信赞赏码" /></a>
+
+谢谢支持！
+
 ## 许可证
 
 [MIT](LICENSE)
