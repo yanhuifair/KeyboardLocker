@@ -1,0 +1,20 @@
+# Build output
+build/
+*.iconset/
+*.p12
+*.pem
+
+# macOS
+.DS_Store
+._*
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+
+# Editor
+.vscode/
+.idea/
+
+# Local workspace data
+.workbuddy/
