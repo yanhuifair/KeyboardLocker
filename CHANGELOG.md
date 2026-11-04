@@ -4,6 +4,7 @@
 
 - `release.sh`: one-command publishing — version bump, changelog-based notes, build, tag and GitHub Release
 - `build.sh`: `KEYBOARDLOCKER_ADHOC=1` forces an ad-hoc signature for distribution builds
+- README: promo banner (`docs/promo.png`) covering the title, features and safety highlights
 
 ## 1.0.0 — 2026-11-04
 

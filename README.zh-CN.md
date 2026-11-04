@@ -1,11 +1,11 @@
 # KeyboardLocker
 
+![KeyboardLocker 宣传图：一键锁住整个键盘](docs/promo.png)
+
 清洁键盘时点一下菜单栏图标，所有按键立刻失去响应；再点一下恢复。
 只有一个菜单栏图标，没有窗口、没有 Dock 图标、不会弹任何提示。
 
 [English](README.md)
-
-![未锁定与锁定状态的菜单栏图标](docs/menubar.png)
 
 ## 为什么需要它
 
@@ -17,6 +17,8 @@
 - **点一下就锁**：点击菜单栏图标在锁定 / 解锁之间切换
 - **拦下全部按键**：字母数字、修饰键、功能键、音量 / 亮度等媒体键
 - **一眼看出状态**：平时是线框白色键盘，锁定时变成实心红色键盘
+
+![未锁定与锁定状态的菜单栏图标](docs/menubar.png)
 
 右键图标只有两项：锁定 / 解锁、退出。
 
@@ -141,6 +143,7 @@ Sources/
   SelfTest.swift                 命令行自检
 Resources/Info.plist             应用元信息
 Tools/make-icon.swift            应用图标生成
+Tools/make-promo.swift           README 宣传图生成
 Tools/make-readme-figure.swift   README 状态图生成
 build.sh                         构建脚本
 release.sh                       版本号更新、打包与 GitHub 发布

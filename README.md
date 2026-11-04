@@ -1,10 +1,10 @@
 # KeyboardLocker
 
+![KeyboardLocker — one click to lock every key on your Mac](docs/promo.png)
+
 A menu bar app for macOS that locks every key on your keyboard with a single click — for when you need to wipe it down.
 
 [中文说明](README.zh-CN.md)
-
-![Idle and locked menu bar states](docs/menubar.png)
 
 ## Why
 
@@ -15,6 +15,8 @@ Cleaning a keyboard always ends up opening a dozen windows, triggering shortcuts
 - **One click to lock** — click the menu bar icon to toggle
 - **Every key captured** — letters, modifiers, function keys, and media keys such as volume and brightness
 - **State you can see at a glance** — an outlined white keyboard when idle, a solid red one while locked
+
+![Idle and locked menu bar states](docs/menubar.png)
 
 Right-clicking the icon gives you just two items: lock / unlock, and quit. No windows, no Dock icon, no popups.
 
@@ -126,6 +128,7 @@ Sources/
   SelfTest.swift                 Command-line self-test
 Resources/Info.plist             App metadata
 Tools/make-icon.swift            App icon generator
+Tools/make-promo.swift           README promo banner generator
 Tools/make-readme-figure.swift   README state diagram generator
 build.sh                         Build script
 release.sh                       Version bump, packaging and GitHub Release
