@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `release.sh`: one-command publishing — version bump, changelog-based notes, build, tag and GitHub Release
+- `build.sh`: `KEYBOARDLOCKER_ADHOC=1` forces an ad-hoc signature for distribution builds
+
 ## 1.0.0 — 2026-11-04
 
 First release.

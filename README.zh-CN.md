@@ -84,6 +84,37 @@
 它会创建拦截器、注入 20 个模拟按键事件并统计拦截数量，
 输出 `PASS` 表示全部拦下（退出码 0）。
 
+## 发布新版本
+
+前置条件：工作区干净、位于 `main` 且与远程同步、已执行 `gh auth login`。
+
+建议先在 `CHANGELOG.md` 里写好对应版本的段落（不写的话脚本会用 `git log` 自动生成条目）：
+
+```markdown
+## 1.0.1 — 2026-11-04
+
+- 这次改了什么
+```
+
+然后预览、发布：
+
+```bash
+./release.sh 1.0.1 --dry-run   # 只预览说明和动作，不改文件、不推送
+./release.sh 1.0.1             # 改版本号 → 构建 → 打 tag → 推送 → 创建 Release
+./release.sh patch             # 也可以写 minor / major，基于最新 tag 自动递增
+```
+
+脚本会依次：把 `CFBundleShortVersionString` / `CFBundleVersion` 写进 `Info.plist` 并提交、以 ad-hoc 签名重新构建、
+打包 `KeyboardLocker.zip` 和 `.sha256`、创建附注 tag、推送分支与 tag、
+最后用 CHANGELOG 对应段落（附加固定的安装说明）创建 GitHub Release。
+
+| 参数 | 作用 |
+| --- | --- |
+| `--dry-run` | 只构建并预览，不提交、不打 tag、不推送 |
+| `--notes-file FILE` | 用自己写好的完整 Release 说明 |
+| `--draft` | 创建为草稿，不对外发布 |
+| `-y` | 跳过确认提示 |
+
 ## 实现要点
 
 - `KeyboardLockEngine` — 用 `CGEvent.tapCreate` 在 `.cghidEventTap` 层建立常驻事件拦截，
@@ -111,6 +142,7 @@ Sources/
 Resources/Info.plist      应用元信息
 Tools/make-icon.swift     应用图标生成
 build.sh                  构建脚本
+release.sh                版本号更新、打包与 GitHub 发布
 ```
 
 ## 许可证

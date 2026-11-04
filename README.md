@@ -77,6 +77,35 @@ A keyboard lock that can't be undone is the worst possible failure mode, so ther
 
 Creates the interceptor, injects 20 synthetic key events, and counts how many were swallowed. Prints `PASS` on success (exit code 0).
 
+## Releasing
+
+Requires a clean working tree on `main`, synced with `origin`, and `gh auth login` done.
+
+Write the version section in `CHANGELOG.md` first (otherwise `git log` is used to fill the notes):
+
+```markdown
+## 1.0.1 — 2026-11-04
+
+- What changed
+```
+
+Then preview and publish:
+
+```bash
+./release.sh 1.0.1 --dry-run   # preview notes and actions, nothing is written or pushed
+./release.sh 1.0.1             # bump version, build, tag, push, create the Release
+./release.sh patch             # or: minor / major, computed from the latest tag
+```
+
+The script bumps `CFBundleShortVersionString` / `CFBundleVersion` in a commit, rebuilds with an ad-hoc signature, packages `KeyboardLocker.zip` plus a `.sha256`, creates an annotated tag, pushes both, and publishes the GitHub Release using the changelog section as its notes (followed by the standard install instructions).
+
+| Flag | Purpose |
+| --- | --- |
+| `--dry-run` | Build and preview only; no commits, tags, or pushes |
+| `--notes-file FILE` | Use a complete custom Release description |
+| `--draft` | Create the Release as a draft |
+| `-y` | Skip the confirmation prompt |
+
 ## How it works
 
 - `KeyboardLockEngine` installs a persistent `CGEventTap` at the `.cghidEventTap` layer — below system shortcut handling, so ⌘Tab and ⌘Q get swallowed too. The tap runs on its own thread's run loop, so a busy main thread can't miss keystrokes.
@@ -98,6 +127,7 @@ Sources/
 Resources/Info.plist       App metadata
 Tools/make-icon.swift      App icon generator
 build.sh                   Build script
+release.sh                 Version bump, packaging and GitHub Release
 ```
 
 ## License

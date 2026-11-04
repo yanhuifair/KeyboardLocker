@@ -6,6 +6,8 @@
 #   ./build.sh --run     构建后直接启动
 #   ./build.sh --install 构建后安装到 /Applications 并启动
 #
+#   KEYBOARDLOCKER_ADHOC=1 ./build.sh   强制 ad-hoc 签名（release.sh 发版用）
+#
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -81,7 +83,10 @@ xattr -cr "$APP" 2>/dev/null || true
 # 如果本机存在自签名的开发证书，用它签名可以让 TCC 授权在重新编译后继续有效；
 # 否则退回 ad-hoc 签名（每次重新编译后需要在系统设置里重新勾选权限）。
 SIGN_IDENTITY="KeyboardLocker Dev"
-if security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGN_IDENTITY"; then
+if [ "${KEYBOARDLOCKER_ADHOC:-0}" = "1" ]; then
+    echo "==> 签名（ad-hoc，发布模式）"
+    codesign --force --sign - --identifier "$BUNDLE_ID" "$APP"
+elif security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGN_IDENTITY"; then
     echo "==> 签名（$SIGN_IDENTITY）"
     codesign --force --sign "$SIGN_IDENTITY" --identifier "$BUNDLE_ID" "$APP"
 else
