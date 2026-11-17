@@ -23,9 +23,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         buildMenu()
         registerSystemObservers()
 
-        // 指针也被冻住时，右键菜单点不到，纯键盘手势是唯一出路
-        engine.onUnlockRequest = { [weak self] in
-            self?.applyLocked(false)
+        // 指针被冻住时右键菜单点不到，⌃⌥⌘L 既是解锁的唯一出路，也负责上锁
+        engine.onShortcut = { [weak self] shouldLock in
+            self?.applyShortcut(shouldLock)
         }
 
         if !engine.start() {
@@ -94,6 +94,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // 屏幕已经锁着的时候不允许上锁：那时用户唯一需要的就是键盘能打密码
         if target && Self.isScreenLocked() { return }
         applyLocked(target)
+    }
+
+    /// 快捷键要求的状态变化。上锁方向同样要过权限和锁屏保护，
+    /// 否则在锁屏界面按一下就白锁了（那时用户唯一需要的就是键盘能打密码）。
+    private func applyShortcut(_ shouldLock: Bool) {
+        if shouldLock {
+            guard ensureEngineReady() else { return }
+            guard !Self.isScreenLocked() else { return }
+        }
+        applyLocked(shouldLock)
     }
 
     private func applyLocked(_ locked: Bool) {
@@ -283,9 +293,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toggleItem.target = self
         menu.addItem(toggleItem)
 
-        // 锁定期间鼠标也失效，右键菜单打不开，所以把解锁手势直接写在菜单里
+        // 锁定期间鼠标也失效，右键菜单打不开，所以把快捷键直接写在菜单里
         let hintItem = NSMenuItem(
-            title: "解锁：⌃⌥⌘L · 或按住 Esc 两秒",
+            title: "锁定 / 解锁：⌃⌥⌘L",
             action: nil,
             keyEquivalent: ""
         )

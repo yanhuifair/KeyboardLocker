@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
 
-/// 命令行自检：验证 event tap 是否真的能吞掉键盘和指针输入，以及解锁手势是否可用。
+/// 命令行自检：验证 event tap 是否真的能吞掉键盘和指针输入，以及解锁快捷键是否可用。
 ///
 /// 用法：KeyboardLocker.app/Contents/MacOS/KeyboardLocker --selftest
 /// 退出码：0 = 通过，1 = 拦截或解锁失败，2 = 缺少权限
@@ -72,8 +72,21 @@ enum SelfTest {
             failures.append("光标没有被固定（移动了 \(Int(drift)) pt）")
         }
 
-        // MARK: ③ ⌃⌥⌘L 解锁
-        print("[selftest] ③ 注入 ⌃⌥⌘L…")
+        // MARK: ③ ⌃⌥⌘⇧L 不应解锁
+        print("[selftest] ③ 注入 ⌃⌥⌘⇧L（多按 ⇧，不应解锁）…")
+        let withShift = KeyboardLockEngine.unlockFlags.union(.maskShift)
+        postFlags(withShift)
+        postKey(KeyboardLockEngine.unlockKeyCode, down: true, flags: withShift)
+        postKey(KeyboardLockEngine.unlockKeyCode, down: false, flags: withShift)
+        Thread.sleep(forTimeInterval: 0.4)
+
+        print("[selftest]    状态: \(engine.isLocked ? "仍锁定" : "被解锁了")")
+        if !engine.isLocked {
+            failures.append("多按 ⇧ 也能解锁")
+        }
+
+        // MARK: ④ ⌃⌥⌘L 解锁
+        print("[selftest] ④ 注入 ⌃⌥⌘L…")
         postFlags([.maskControl])
         postFlags([.maskControl, .maskAlternate])
         postFlags(KeyboardLockEngine.unlockFlags)
@@ -88,18 +101,19 @@ enum SelfTest {
             failures.append("⌃⌥⌘L 没能解锁")
         }
 
-        // MARK: ④ 按住 Esc 解锁
-        print("[selftest] ④ 重新锁定并按住 Esc 2 秒…")
-        engine.setLocked(true)
-        Thread.sleep(forTimeInterval: 0.2)
-        postKey(53, down: true) // Esc 按下
-        Thread.sleep(forTimeInterval: 2.6)
-        postKey(53, down: false)
-        Thread.sleep(forTimeInterval: 0.2)
+        // MARK: ⑤ 未锁定时按快捷键
+        print("[selftest] ⑤ 未锁定状态下再按 ⌃⌥⌘L…")
+        let blockedBeforeShortcut = engine.blockedEventCount
+        postKey(KeyboardLockEngine.unlockKeyCode, down: true,
+                flags: KeyboardLockEngine.unlockFlags)
+        postKey(KeyboardLockEngine.unlockKeyCode, down: false,
+                flags: KeyboardLockEngine.unlockFlags)
+        Thread.sleep(forTimeInterval: 0.3)
 
-        print("[selftest]    状态: \(engine.isLocked ? "仍锁定" : "已解锁")")
-        if engine.isLocked {
-            failures.append("按住 Esc 没能解锁")
+        let shortcutEvents = engine.blockedEventCount - blockedBeforeShortcut
+        print("[selftest]    触发键被吞: \(shortcutEvents)")
+        if shortcutEvents < 1 {
+            failures.append("未锁定时按快捷键没有被捕获")
         }
 
         // MARK: 收尾
@@ -121,7 +135,7 @@ enum SelfTest {
         engine.stop()
 
         if failures.isEmpty {
-            print("[selftest] PASS — 键盘与指针已锁定，两种解锁手势均生效")
+            print("[selftest] PASS — 键盘与指针已锁定，⌃⌥⌘L 可切换锁 / 解锁")
             exit(0)
         } else {
             for failure in failures {

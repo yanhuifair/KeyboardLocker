@@ -10,7 +10,8 @@ import Foundation
 ///   因此系统快捷键（⌘Tab、⌘Q、⌘⌥⎋ 等）同样会被拦下。
 /// - 键盘和指针一起拦：光标移动、点击、拖拽、滚轮全部吞掉，擦触控板时不会把光标甩出去、
 ///   也不会误点到别的窗口。代价是锁定期间菜单栏图标点不动，所以必须留一条纯键盘的出路。
-/// - 紧急解锁手势在吞事件之前判定：⌃⌥⌘L 立刻解锁，或按住 Esc 两秒。
+/// - 快捷键在吞事件之前判定：⌃⌥⌘L 是锁 / 解锁的总开关，未锁定按下就上锁，锁定按下就解锁。
+///   锁定期间菜单栏图标点不动，所以它也是唯一的解锁出路。
 /// - 进程退出后 tap 自动失效，输入立刻恢复 —— 这是最关键的兜底。
 final class KeyboardLockEngine {
 
@@ -39,15 +40,17 @@ final class KeyboardLockEngine {
         CGEventType(rawValue: CGEventType.RawValue($0))
     }
 
-    /// ⌃⌥⌘ + L。用物理键位 37（ANSI L），与键盘布局无关。
+    /// ⌃⌥⌘ + L：锁 / 解锁总开关。用物理键位 37（ANSI L），与键盘布局无关。
+    /// 严格匹配：多按 Shift 不算，避免和 ⌃⌥⌘⇧L 这类系统快捷键撞车。
     static let unlockKeyCode: CGKeyCode = 37
     static let unlockFlags: CGEventFlags = [
         .maskControl, .maskAlternate, .maskCommand,
     ]
 
-    /// 按住 Esc 两秒也能解锁 —— 组合键不记得时的手动挡。
-    private static let escapeKeyCode: CGKeyCode = 53
-    private static let escapeHoldDuration: TimeInterval = 2.0
+    /// 参与严格比对的修饰键。Caps Lock、fn 不在其中，开着 Caps Lock 也能用。
+    static let shortcutModifiers: CGEventFlags = [
+        .maskShift, .maskControl, .maskAlternate, .maskCommand,
+    ]
 
     private let stateLock = NSLock()
 
@@ -69,24 +72,24 @@ final class KeyboardLockEngine {
     private static let warpQuietInterval: CFAbsoluteTime = 0.05
     private var warpSuppressUntil: CFAbsoluteTime = 0
 
-    private var unlockHandler: (() -> Void)?
-    private var escapeHoldWork: DispatchWorkItem?
+    /// 参数是按下快捷键后的目标状态：true = 上锁，false = 解锁。
+    private var shortcutHandler: ((Bool) -> Void)?
 
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var tapThread: Thread?
     private var tapRunLoop: CFRunLoop?
 
-    /// 紧急解锁手势触发时回调（主线程）。由 AppDelegate 用来同步菜单栏图标。
-    var onUnlockRequest: (() -> Void)? {
+    /// 快捷键触发时回调（主线程），由 AppDelegate 应用目标状态并同步菜单栏图标。
+    var onShortcut: ((Bool) -> Void)? {
         get {
             stateLock.lock()
             defer { stateLock.unlock() }
-            return unlockHandler
+            return shortcutHandler
         }
         set {
             stateLock.lock()
-            unlockHandler = newValue
+            shortcutHandler = newValue
             stateLock.unlock()
         }
     }
@@ -205,11 +208,7 @@ final class KeyboardLockEngine {
         _isLocked = false
         trackedModifiers = []
         pinnedCursor = nil
-        let pendingHold = escapeHoldWork
-        escapeHoldWork = nil
         stateLock.unlock()
-
-        pendingHold?.cancel()
 
         if let port {
             CGEvent.tapEnable(tap: port, enable: false)
@@ -309,73 +308,40 @@ final class KeyboardLockEngine {
         stateLock.unlock()
     }
 
-    // MARK: - 紧急解锁
+    // MARK: - 快捷键
 
-    /// 由 tap 线程调用：先放开拦截，再回主线程同步 UI。
-    private func requestUnlock() {
-        cancelEscapeHold()
-        setLocked(false) // 立即生效，不等主线程跑完
-
-        stateLock.lock()
-        let handler = unlockHandler
-        stateLock.unlock()
-
-        guard let handler else { return }
-        DispatchQueue.main.async(execute: handler)
-    }
-
-    /// 按住 Esc 计时用独立队列：主线程被占住（例如自检里 sleep）时也能触发。
-    private static let escapeQueue = DispatchQueue(
-        label: "com.fair.keyboardlocker.escape-hold",
-        qos: .userInteractive
-    )
-
-    private func scheduleEscapeHold() {
-        cancelEscapeHold()
-        let work = DispatchWorkItem { [weak self] in
-            guard let self, self.isLocked else { return }
-            self.requestUnlock()
-        }
-        stateLock.lock()
-        escapeHoldWork = work
-        stateLock.unlock()
-        Self.escapeQueue.asyncAfter(
-            deadline: .now() + Self.escapeHoldDuration,
-            execute: work
-        )
-    }
-
-    private func cancelEscapeHold() {
-        stateLock.lock()
-        let work = escapeHoldWork
-        escapeHoldWork = nil
-        stateLock.unlock()
-        work?.cancel()
-    }
-
-    /// 锁定期间先看是不是解锁手势；命中就直接放开锁定。
-    fileprivate func consumeEscapeHatch(type: CGEventType, event: CGEvent) {
-        guard type == .keyDown || type == .keyUp else { return }
+    /// 判断并触发 ⌃⌥⌘L。返回 true 表示命中了快捷键，调用方要把这个按键吞掉。
+    ///
+    /// 解锁方向上先就地放开拦截（不然随后的 keyUp 也会被吞），再交给主线程同步 UI；
+    /// 上锁方向则完全交给主线程的 `applyLocked`，这样锁屏保护等判断都能复用。
+    fileprivate func handleShortcut(type: CGEventType, event: CGEvent) -> Bool {
+        guard type == .keyDown,
+              event.getIntegerValueField(.keyboardEventAutorepeat) == 0
+        else { return false }
 
         let keyCode = CGKeyCode(
             truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode)
         )
-        let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+        guard keyCode == Self.unlockKeyCode else { return false }
 
-        if type == .keyDown, keyCode == Self.unlockKeyCode, !isRepeat {
-            let flags = event.flags.union(currentModifiers)
-            if flags.contains(Self.unlockFlags) {
-                requestUnlock()
-                return
-            }
+        // 严格相等而不是「包含」：多按 ⇧ 不应触发
+        let flags = event.flags.union(currentModifiers)
+            .intersection(Self.shortcutModifiers)
+        guard flags == Self.unlockFlags else { return false }
+
+        let shouldLock = !isLocked
+        if !shouldLock {
+            setLocked(false) // 立即生效，不等主线程跑完
         }
 
-        guard keyCode == Self.escapeKeyCode, !isRepeat else { return }
-        if type == .keyDown {
-            scheduleEscapeHold()
-        } else {
-            cancelEscapeHold()
+        stateLock.lock()
+        let handler = shortcutHandler
+        stateLock.unlock()
+
+        if let handler {
+            DispatchQueue.main.async { handler(shouldLock) }
         }
+        return true
     }
 
     // MARK: - 回调
@@ -393,17 +359,22 @@ final class KeyboardLockEngine {
             return Unmanaged.passUnretained(event)
         }
 
-        // 修饰键状态要在吞事件之前记下来，解锁手势靠它判断
+        // 修饰键状态要在吞事件之前记下来，快捷键靠它判断
         if type == .flagsChanged {
             engine.updateTrackedModifiers(event.flags)
+        }
+
+        // 快捷键在任何状态下都先判定：未锁定按下就上锁，锁定按下就解锁。
+        // 命中的按键一律吞掉，避免把 L 打进当前应用。
+        if engine.handleShortcut(type: type, event: event) {
+            engine.recordBlockedEvent()
+            return nil
         }
 
         guard engine.isLocked else {
             return Unmanaged.passUnretained(event)
         }
 
-        // 先看是否命中解锁手势，再不问类型一律吞掉
-        engine.consumeEscapeHatch(type: type, event: event)
         engine.pinCursorIfNeeded(type: type, event: event)
         engine.recordBlockedEvent()
         return nil

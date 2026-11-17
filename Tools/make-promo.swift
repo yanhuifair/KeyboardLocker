@@ -439,10 +439,10 @@ drawSymbol("checkmark.shield.fill", in: highlightIcon.insetBy(dx: 10, dy: 10),
            color: paper, weight: .semibold)
 
 let copyLeft = highlightIcon.maxX + 16
-label("锁屏自动解锁 · 快捷键随时开锁",
+label("锁屏自动解锁 · 快捷键一键开关",
       CGRect(x: copyLeft, y: 157, width: 500, height: 40),
       size: 30, weight: .semibold, color: onWhite, chinese: true)
-label("AUTO-UNLOCK ON SLEEP · CTRL+ALT+CMD+L",
+label("AUTO-UNLOCK ON SLEEP · CTRL+ALT+CMD+L TOGGLES",
       CGRect(x: copyLeft, y: 125, width: 500, height: 28),
       size: 18, color: red)
 

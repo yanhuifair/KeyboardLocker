@@ -3,7 +3,8 @@
 ## Unreleased
 
 - **Trackpad and mouse are locked too**: movement, clicks, drags, scrolling and trackpad gestures are dropped, and the cursor is pinned at the position it had when locking
-- **Unlock shortcut** ⌃⌥⌘L, plus holding Esc for two seconds as a backup — the only way out now that the pointer is inert
+- **Lock / unlock shortcut** ⌃⌥⌘L — toggles in both directions, and the only way out now that the pointer is inert
+- The shortcut matches modifiers strictly: adding ⇧ does not trigger it
 - Menu shows the unlock shortcut so it can't be forgotten
 - `--selftest` also verifies pointer blocking and both unlock gestures
 - `release.sh`: one-command publishing — version bump, changelog-based notes, build, tag and GitHub Release

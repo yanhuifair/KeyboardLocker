@@ -19,7 +19,7 @@ Cleaning a keyboard always ends up opening a dozen windows, triggering shortcuts
 
 ![Idle and locked menu bar states](docs/menubar.png)
 
-Right-clicking the icon gives you just two items: lock / unlock, and quit — plus the unlock shortcut, so forgetting it can't lock you out.
+Right-clicking the icon gives you just two items: lock / unlock, and quit — plus the ⌃⌥⌘L shortcut, so forgetting it can't lock you out.
 
 ## Requirements
 
@@ -52,21 +52,21 @@ Intercepting input events requires system authorization. On first launch the app
 | --- | --- |
 | Left-click the icon | Lock (keyboard + trackpad) |
 | Right-click the icon | Menu (lock, quit) |
-| ⌃⌥⌘L | Unlock |
-| Hold Esc for 2 seconds | Unlock (backup) |
+| ⌃⌥⌘L | Lock / unlock |
 
-While locked every pointer event is dropped, including clicks on the menu bar icon, so unlocking goes through the keyboard. The shortcut uses the physical L key position, so it works on any keyboard layout.
+The same shortcut toggles: press it while unlocked to lock, press it again to unlock. It has to be keyboard-only — while locked every pointer event is dropped, including clicks on the menu bar icon. It uses the physical L key position, so it works on any keyboard layout, and the modifiers are matched strictly — holding ⇧ as well does nothing.
 
 ## Safety
 
 A lock that can't be undone is the worst possible failure mode, so there are several layers:
 
-- **Keyboard-only unlock gestures** — ⌃⌥⌘L releases immediately, and holding Esc for two seconds does the same. Neither needs a mouse
+- **Keyboard-only toggle** — ⌃⌥⌘L locks and unlocks alike, no mouse needed
 - **Process exit restores input** — the event tap dies with the process
 - **Screen lock and sleep auto-unlock** — locking the screen, display sleep, or system sleep releases input immediately, so the login password can always be typed
 - **Double detection** — a system notification plus a once-per-second session check; worst case it unlocks within a second
 - **Refuses to lock while the screen is already locked**
 - **Closing the lid is always an exit** — even if the keyboard dies, sleep releases the lock
+- **The shortcut is written in the menu** — check it before locking
 
 ## Limitations
 
@@ -82,7 +82,7 @@ A lock that can't be undone is the worst possible failure mode, so there are sev
 ./build/KeyboardLocker.app/Contents/MacOS/KeyboardLocker --selftest
 ```
 
-Creates the interceptor, injects 20 synthetic keys and one pointer move, then unlocks with ⌃⌥⌘L and with a held Esc. Prints `PASS` when everything works (exit code 0).
+Creates the interceptor, injects 20 synthetic keys and one pointer move, then checks that ⌃⌥⌘L unlocks while locked and is captured while unlocked. Prints `PASS` when everything works (exit code 0).
 
 ## Releasing
 
@@ -118,7 +118,7 @@ The script bumps `CFBundleShortVersionString` / `CFBundleVersion` in a commit, r
 - `KeyboardLockEngine` installs a persistent `CGEventTap` at the `.cghidEventTap` layer — below system shortcut handling, so ⌘Tab and ⌘Q get swallowed too. The tap runs on its own thread's run loop, so a busy main thread can't miss keystrokes.
 - **Keyboard and pointer together**: the mask covers keys, mouse buttons, movement, drags, the scroll wheel and trackpad gestures, and while locked everything is `return nil` — no app receives anything.
 - **Cursor pinned in place**: dropping an event doesn't stop the window server from having already moved the cursor, so every move event that carries a delta is warped back to the lock position with `CGWarpMouseCursorPosition`. Warp-generated events carry a zero delta, which is how the "warp → new event → warp again" loop is avoided. `CGAssociateMouseAndMouseCursorPosition(0)` is deliberately not used: it's global window-server state, and a crashed process would leave the cursor frozen.
-- **Unlock gestures are checked before swallowing**: modifier state is tracked from `flagsChanged` (which is swallowed too while locked), so a `keyDown` for ⌃⌥⌘ + L unlocks first and then discards the key itself.
+- **The shortcut is checked before swallowing**: modifier state is tracked from `flagsChanged` (swallowed too while locked), so a `keyDown` for ⌃⌥⌘ + L is recognised in both states, acted on, and then discarded — the letter never reaches the focused app.
 - Locking flips a mutex-protected flag rather than creating or destroying the tap: no latency, no failure path.
 - When macOS disables the tap after a callback timeout, the callback re-enables it immediately so the keyboard never quietly comes back to life.
 - The menu bar icon is a template mask tinted through CoreGraphics. The red state is baked into a bitmap before it reaches the button — a palette-tinted SF Symbol gets re-rendered by the menu bar as a template and turns white. Both states share one canvas size, otherwise `NSStatusItem` miscalculates the button width on the second toggle and the icon vanishes.
