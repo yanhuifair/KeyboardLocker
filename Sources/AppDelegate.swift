@@ -285,7 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // 锁定期间鼠标也失效，右键菜单打不开，所以把解锁手势直接写在菜单里
         let hintItem = NSMenuItem(
-            title: "解锁：⇧⌃⌥⌘L · 或按住 Esc 两秒",
+            title: "解锁：⌃⌥⌘L · 或按住 Esc 两秒",
             action: nil,
             keyEquivalent: ""
         )

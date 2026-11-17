@@ -72,11 +72,10 @@ enum SelfTest {
             failures.append("光标没有被固定（移动了 \(Int(drift)) pt）")
         }
 
-        // MARK: ③ ⇧⌃⌥⌘L 解锁
-        print("[selftest] ③ 注入 ⇧⌃⌥⌘L…")
-        postFlags([.maskShift])
-        postFlags([.maskShift, .maskControl])
-        postFlags([.maskShift, .maskControl, .maskAlternate])
+        // MARK: ③ ⌃⌥⌘L 解锁
+        print("[selftest] ③ 注入 ⌃⌥⌘L…")
+        postFlags([.maskControl])
+        postFlags([.maskControl, .maskAlternate])
         postFlags(KeyboardLockEngine.unlockFlags)
         postKey(KeyboardLockEngine.unlockKeyCode, down: true,
                 flags: KeyboardLockEngine.unlockFlags)
@@ -86,7 +85,7 @@ enum SelfTest {
 
         print("[selftest]    状态: \(engine.isLocked ? "仍锁定" : "已解锁")")
         if engine.isLocked {
-            failures.append("⇧⌃⌥⌘L 没能解锁")
+            failures.append("⌃⌥⌘L 没能解锁")
         }
 
         // MARK: ④ 按住 Esc 解锁

@@ -292,11 +292,11 @@ titleSecond.draw(with: CGRect(x: highlightRect.minX + 7, y: titleBox.minY,
                               width: secondWidth + 4, height: titleBox.height),
                  options: [.usesLineFragmentOrigin, .usesFontLeading])
 
-label("擦键盘时，一键锁住整个键盘",
+label("擦键盘擦触控板，一键锁住全部输入",
       CGRect(x: 0, y: 919, width: W, height: 55),
       size: 40, weight: .semibold, color: paper, kern: 1,
       alignment: .center, chinese: true)
-label("> one click  ·  every key blocked  ·  wipe it down in peace",
+label("> one click  ·  all input blocked  ·  wipe it down in peace",
       CGRect(x: 0, y: 880, width: W, height: 36),
       size: 22, color: gray, alignment: .center)
 dashedLine(CGPoint(x: margin, y: 866), CGPoint(x: rightEdge, y: 866))
@@ -442,7 +442,7 @@ let copyLeft = highlightIcon.maxX + 16
 label("锁屏自动解锁 · 快捷键随时开锁",
       CGRect(x: copyLeft, y: 157, width: 500, height: 40),
       size: 30, weight: .semibold, color: onWhite, chinese: true)
-label("AUTO-UNLOCK ON SLEEP · SHIFT+CTRL+ALT+CMD+L",
+label("AUTO-UNLOCK ON SLEEP · CTRL+ALT+CMD+L",
       CGRect(x: copyLeft, y: 125, width: 500, height: 28),
       size: 18, color: red)
 

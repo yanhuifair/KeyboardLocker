@@ -10,7 +10,7 @@ import Foundation
 ///   因此系统快捷键（⌘Tab、⌘Q、⌘⌥⎋ 等）同样会被拦下。
 /// - 键盘和指针一起拦：光标移动、点击、拖拽、滚轮全部吞掉，擦触控板时不会把光标甩出去、
 ///   也不会误点到别的窗口。代价是锁定期间菜单栏图标点不动，所以必须留一条纯键盘的出路。
-/// - 紧急解锁手势在吞事件之前判定：⇧⌃⌥⌘L 立刻解锁，或按住 Esc 两秒。
+/// - 紧急解锁手势在吞事件之前判定：⌃⌥⌘L 立刻解锁，或按住 Esc 两秒。
 /// - 进程退出后 tap 自动失效，输入立刻恢复 —— 这是最关键的兜底。
 final class KeyboardLockEngine {
 
@@ -39,10 +39,10 @@ final class KeyboardLockEngine {
         CGEventType(rawValue: CGEventType.RawValue($0))
     }
 
-    /// ⇧⌃⌥⌘ + L。用物理键位 37（ANSI L），与键盘布局无关。
+    /// ⌃⌥⌘ + L。用物理键位 37（ANSI L），与键盘布局无关。
     static let unlockKeyCode: CGKeyCode = 37
     static let unlockFlags: CGEventFlags = [
-        .maskShift, .maskControl, .maskAlternate, .maskCommand,
+        .maskControl, .maskAlternate, .maskCommand,
     ]
 
     /// 按住 Esc 两秒也能解锁 —— 组合键不记得时的手动挡。
