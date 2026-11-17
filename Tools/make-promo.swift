@@ -376,11 +376,11 @@ fillRound(lockPlate, 0, redCG)
 label("// LOCKED", CGRect(x: lockPlate.minX, y: lockPlate.minY + 50,
                           width: lockPlate.width, height: 32),
       size: 26, weight: .bold, color: paper, alignment: .center)
-label("ALL KEYS DISCARDED", CGRect(x: lockPlate.minX, y: lockPlate.minY + 16,
+label("KEYS + POINTER DISCARDED", CGRect(x: lockPlate.minX, y: lockPlate.minY + 16,
                                    width: lockPlate.width, height: 24),
       size: 15, color: paper, alignment: .center)
 
-label("> 点一下图标，所有按键立即失去响应",
+label("> 点一下图标，键盘和触控板一起失效",
       CGRect(x: heroInnerLeft, y: 586, width: heroInnerWidth, height: 28),
       size: 21, color: gray, alignment: .center, chinese: true)
 
@@ -396,7 +396,7 @@ let features = [
     Feature(symbol: "keyboard", title: "Every key", detail: "字母 · 修饰键 · 媒体键"),
     Feature(symbol: "lock.open.fill", title: "Never stuck", detail: "锁屏 / 睡眠自动解锁"),
     Feature(symbol: "menubar.rectangle", title: "Zero clutter", detail: "没有窗口和弹窗"),
-    Feature(symbol: "cursorarrow", title: "Mouse stays free", detail: "解锁不依赖键盘"),
+    Feature(symbol: "cursorarrow.slash", title: "Pointer too", detail: "触控板 · 鼠标一并锁住"),
 ]
 
 let gridY: CGFloat = 250
@@ -439,10 +439,10 @@ drawSymbol("checkmark.shield.fill", in: highlightIcon.insetBy(dx: 10, dy: 10),
            color: paper, weight: .semibold)
 
 let copyLeft = highlightIcon.maxX + 16
-label("锁屏即自动解锁 · 密码照常能输",
+label("锁屏自动解锁 · 快捷键随时开锁",
       CGRect(x: copyLeft, y: 157, width: 500, height: 40),
       size: 30, weight: .semibold, color: onWhite, chinese: true)
-label("AUTO-UNLOCK ON SCREEN LOCK / SLEEP",
+label("AUTO-UNLOCK ON SLEEP · SHIFT+CTRL+ALT+CMD+L",
       CGRect(x: copyLeft, y: 125, width: 500, height: 28),
       size: 18, color: red)
 

@@ -23,6 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         buildMenu()
         registerSystemObservers()
 
+        // 指针也被冻住时，右键菜单点不到，纯键盘手势是唯一出路
+        engine.onUnlockRequest = { [weak self] in
+            self?.applyLocked(false)
+        }
+
         if !engine.start() {
             startPermissionPolling()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
@@ -277,6 +282,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
         toggleItem.target = self
         menu.addItem(toggleItem)
+
+        // 锁定期间鼠标也失效，右键菜单打不开，所以把解锁手势直接写在菜单里
+        let hintItem = NSMenuItem(
+            title: "解锁：⇧⌃⌥⌘L · 或按住 Esc 两秒",
+            action: nil,
+            keyEquivalent: ""
+        )
+        hintItem.isEnabled = false
+        menu.addItem(hintItem)
 
         menu.addItem(.separator())
 
