@@ -75,6 +75,7 @@ A lock that can't be undone is the worst possible failure mode, so there are sev
 - The menu bar icon can't be clicked while locked — an unavoidable consequence of dropping pointer events; unlock with the keyboard
 - System-recognized gestures such as Mission Control and Launchpad may still fire
 - **The Touch Bar can't be blocked** — its keys don't travel as CGEvents but through the private NSTouchBar path
+- Touch-capable Macs (macOS 27 and later) have a system-level switch at Accessibility › Body & Motion › Touch › "Ignore touch gestures" which is even more thorough than the event layer; the app deliberately doesn't flip it (no lingering system changes), so turn it on manually when you need it — the two stack
 - External touchscreens and pen displays are covered (they're HID), but their own driver panels (e.g. Wacom settings) aren't
 - While a password field is focused, macOS's Secure Input cuts off event taps, so keys can slip through during that window
 - Some vendor-specific keys on third-party keyboards may bypass the event layer
