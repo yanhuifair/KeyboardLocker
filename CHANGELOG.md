@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Injected input is blocked too**: a second tap at `.cgSessionEventTap` catches pointer events injected by Sidecar / Universal Control / touchscreen drivers, which slip past a HID-only tap
 - **Trackpad and mouse are locked too**: movement, clicks, drags, scrolling and trackpad gestures are dropped, and the cursor is pinned at the position it had when locking
 - **Lock / unlock shortcut** ⌃⌥⌘L — toggles in both directions, and the only way out now that the pointer is inert
 - The shortcut matches modifiers strictly: adding ⇧ does not trigger it

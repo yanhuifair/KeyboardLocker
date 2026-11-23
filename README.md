@@ -15,6 +15,7 @@ Cleaning a keyboard always ends up opening a dozen windows, triggering shortcuts
 - **One click to lock** — click the menu bar icon to toggle
 - **Every key captured** — letters, modifiers, function keys, and media keys such as volume and brightness
 - **Trackpad locked too** — movement, clicks, scrolling, drags and gestures are all discarded, and the cursor stays pinned where it was
+- **Injected input as well** — two taps, HID and session, so pointer events injected by Sidecar, Universal Control or a touchscreen driver are dropped too
 - **State you can see at a glance** — an outlined white keyboard when idle, a solid red one while locked
 
 ![Idle and locked menu bar states](docs/menubar.png)
@@ -73,6 +74,8 @@ A lock that can't be undone is the worst possible failure mode, so there are sev
 - The power button and Touch ID are out of scope — that's a system-level boundary
 - The menu bar icon can't be clicked while locked — an unavoidable consequence of dropping pointer events; unlock with the keyboard
 - System-recognized gestures such as Mission Control and Launchpad may still fire
+- **The Touch Bar can't be blocked** — its keys don't travel as CGEvents but through the private NSTouchBar path
+- External touchscreens and pen displays are covered (they're HID), but their own driver panels (e.g. Wacom settings) aren't
 - While a password field is focused, macOS's Secure Input cuts off event taps, so keys can slip through during that window
 - Some vendor-specific keys on third-party keyboards may bypass the event layer
 
@@ -116,7 +119,8 @@ The script bumps `CFBundleShortVersionString` / `CFBundleVersion` in a commit, r
 ## How it works
 
 - `KeyboardLockEngine` installs a persistent `CGEventTap` at the `.cghidEventTap` layer — below system shortcut handling, so ⌘Tab and ⌘Q get swallowed too. The tap runs on its own thread's run loop, so a busy main thread can't miss keystrokes.
-- **Keyboard and pointer together**: the mask covers keys, mouse buttons, movement, drags, the scroll wheel and trackpad gestures, and while locked everything is `return nil` — no app receives anything.
+- **Two taps**: `.cghidEventTap` for physical devices (keyboard, trackpad, touchscreen) and `.cgSessionEventTap` for events injected at the session layer by Sidecar, Universal Control or remote-control tools — with only the HID tap, those slip straight through (measured).
+- **Keyboard and pointer together**: the mask covers keys, mouse buttons, movement, drags, the scroll wheel, tablet pointer/proximity and the NX 29–34 gesture/touch range; while locked everything is `return nil` — no app receives anything.
 - **Cursor pinned in place**: dropping an event doesn't stop the window server from having already moved the cursor, so every move event that carries a delta is warped back to the lock position with `CGWarpMouseCursorPosition`. Warp-generated events carry a zero delta, which is how the "warp → new event → warp again" loop is avoided. `CGAssociateMouseAndMouseCursorPosition(0)` is deliberately not used: it's global window-server state, and a crashed process would leave the cursor frozen.
 - **The shortcut is checked before swallowing**: modifier state is tracked from `flagsChanged` (swallowed too while locked), so a `keyDown` for ⌃⌥⌘ + L is recognised in both states, acted on, and then discarded — the letter never reaches the focused app.
 - Locking flips a mutex-protected flag rather than creating or destroying the tap: no latency, no failure path.

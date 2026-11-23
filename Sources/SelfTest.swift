@@ -72,8 +72,34 @@ enum SelfTest {
             failures.append("光标没有被固定（移动了 \(Int(drift)) pt）")
         }
 
-        // MARK: ③ ⌃⌥⌘⇧L 不应解锁
-        print("[selftest] ③ 注入 ⌃⌥⌘⇧L（多按 ⇧，不应解锁）…")
+        // MARK: ③ session 层注入的指针（Sidecar / 通用控制 / 触摸屏驱动）
+        print("[selftest] ③ 从 session 层注入指针移动…")
+        let blockedBeforeSession = engine.blockedEventCount
+        let sessionBefore = CGEvent(source: nil)?.location ?? .zero
+        if let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
+                              mouseCursorPosition: CGPoint(x: sessionBefore.x + 200,
+                                                           y: sessionBefore.y + 140),
+                              mouseButton: .left) {
+            move.setIntegerValueField(.mouseEventDeltaX, value: 200)
+            move.setIntegerValueField(.mouseEventDeltaY, value: 140)
+            move.post(tap: .cgSessionEventTap)
+        }
+        Thread.sleep(forTimeInterval: 0.45)
+
+        let sessionAfter = CGEvent(source: nil)?.location ?? .zero
+        let sessionDrift = hypot(sessionAfter.x - sessionBefore.x,
+                                 sessionAfter.y - sessionBefore.y)
+        let sessionEvents = engine.blockedEventCount - blockedBeforeSession
+        print("[selftest]    指针事件被吞: \(sessionEvents)，光标位移: \(Int(sessionDrift)) pt")
+        if sessionEvents < 1 {
+            failures.append("session 层注入的指针事件没有被拦到")
+        }
+        if sessionDrift > 2 {
+            failures.append("session 层注入的指针漏过去了（移动了 \(Int(sessionDrift)) pt）")
+        }
+
+        // MARK: ④ ⌃⌥⌘⇧L 不应解锁
+        print("[selftest] ④ 注入 ⌃⌥⌘⇧L（多按 ⇧，不应解锁）…")
         let withShift = KeyboardLockEngine.unlockFlags.union(.maskShift)
         postFlags(withShift)
         postKey(KeyboardLockEngine.unlockKeyCode, down: true, flags: withShift)
@@ -85,8 +111,8 @@ enum SelfTest {
             failures.append("多按 ⇧ 也能解锁")
         }
 
-        // MARK: ④ ⌃⌥⌘L 解锁
-        print("[selftest] ④ 注入 ⌃⌥⌘L…")
+        // MARK: ⑤ ⌃⌥⌘L 解锁
+        print("[selftest] ⑤ 注入 ⌃⌥⌘L…")
         postFlags([.maskControl])
         postFlags([.maskControl, .maskAlternate])
         postFlags(KeyboardLockEngine.unlockFlags)
@@ -101,8 +127,8 @@ enum SelfTest {
             failures.append("⌃⌥⌘L 没能解锁")
         }
 
-        // MARK: ⑤ 未锁定时按快捷键
-        print("[selftest] ⑤ 未锁定状态下再按 ⌃⌥⌘L…")
+        // MARK: ⑥ 未锁定时按快捷键
+        print("[selftest] ⑥ 未锁定状态下再按 ⌃⌥⌘L…")
         let blockedBeforeShortcut = engine.blockedEventCount
         postKey(KeyboardLockEngine.unlockKeyCode, down: true,
                 flags: KeyboardLockEngine.unlockFlags)
@@ -127,6 +153,11 @@ enum SelfTest {
             restore.post(tap: .cghidEventTap)
         }
 
+        print("[selftest] session 层 tap: \(engine.coversInjectedInput ? "已挂上" : "未挂上")")
+        if !engine.coversInjectedInput {
+            failures.append("session 层 tap 未创建，注入类输入（Sidecar / 通用控制）拦不住")
+        }
+
         let reenables = engine.reenableCount
         print("[selftest] tap 被系统重建: \(reenables) 次")
         if reenables > 0 {
@@ -135,7 +166,7 @@ enum SelfTest {
         engine.stop()
 
         if failures.isEmpty {
-            print("[selftest] PASS — 键盘与指针已锁定，⌃⌥⌘L 可切换锁 / 解锁")
+            print("[selftest] PASS — 实体设备与注入输入都已锁定，⌃⌥⌘L 可切换锁 / 解锁")
             exit(0)
         } else {
             for failure in failures {

@@ -25,7 +25,7 @@ final class KeyboardLockEngine {
         .rightMouseDown, .rightMouseUp, .rightMouseDragged,
         .otherMouseDown, .otherMouseUp, .otherMouseDragged,
         .scrollWheel,
-        .tabletPointer,
+        .tabletPointer, .tabletProximity,
     ]
 
     /// 会改变光标位置的事件。吞掉它们只能阻止应用收到事件，
@@ -34,9 +34,9 @@ final class KeyboardLockEngine {
         .mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged,
     ]
 
-    /// 触控板手势事件（捏合、旋转、轻扫、手势开始/结束）。
-    /// 这些在 CGEventType 里没有正式名字，只能按 NX 事件编号 29…33 取。
-    private static let gestureTypes: [CGEventType] = (29...33).compactMap {
+    /// 触控板 / 触摸屏手势与触摸事件（捏合、旋转、轻扫、手势开始 / 结束）。
+    /// 这些在 CGEventType 里没有正式名字，只能按 NX 事件编号 29…34 取。
+    private static let gestureTypes: [CGEventType] = (29...34).compactMap {
         CGEventType(rawValue: CGEventType.RawValue($0))
     }
 
@@ -75,8 +75,9 @@ final class KeyboardLockEngine {
     /// 参数是按下快捷键后的目标状态：true = 上锁，false = 解锁。
     private var shortcutHandler: ((Bool) -> Void)?
 
-    private var tap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    /// 两层 tap：HID 层管实体设备，session 层管应用注入的事件。
+    private var taps: [CFMachPort] = []
+    private var tapSources: [CFRunLoopSource] = []
     private var tapThread: Thread?
     private var tapRunLoop: CFRunLoop?
 
@@ -99,7 +100,14 @@ final class KeyboardLockEngine {
     var isRunning: Bool {
         stateLock.lock()
         defer { stateLock.unlock() }
-        return tap != nil
+        return !taps.isEmpty
+    }
+
+    /// 是否同时挂上了 session 层 tap（Sidecar / 通用控制等注入的输入靠它拦）。
+    var coversInjectedInput: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return taps.count > 1
     }
 
     /// 注意：该属性会在 event tap 回调线程被高频读取，必须加锁。
@@ -137,7 +145,7 @@ final class KeyboardLockEngine {
     @discardableResult
     func start() -> Bool {
         stateLock.lock()
-        let alreadyRunning = (tap != nil)
+        let alreadyRunning = !taps.isEmpty
         stateLock.unlock()
         if alreadyRunning { return true }
 
@@ -153,22 +161,35 @@ final class KeyboardLockEngine {
             partial | (CGEventMask(1) << CGEventMask(type.rawValue))
         }
 
-        guard let port = CGEvent.tapCreate(
-            tap: .cghidEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: KeyboardLockEngine.eventTapCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else {
-            return false
+        func makeTap(_ location: CGEventTapLocation) -> CFMachPort? {
+            CGEvent.tapCreate(
+                tap: location,
+                place: .headInsertEventTap,
+                options: .defaultTap,
+                eventsOfInterest: mask,
+                callback: KeyboardLockEngine.eventTapCallback,
+                userInfo: Unmanaged.passUnretained(self).toOpaque()
+            )
         }
 
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0)
+        guard let hidTap = makeTap(.cghidEventTap) else { return false }
+        // session 层拿不到不算失败：HID 层已经能覆盖实体键盘、触控板和触摸屏
+        let injectedTap = makeTap(.cgSessionEventTap)
+
+        var ports: [CFMachPort] = []
+        var sources: [CFRunLoopSource] = []
+        for port in [hidTap, injectedTap].compactMap({ $0 }) {
+            guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0) else {
+                continue
+            }
+            ports.append(port)
+            sources.append(source)
+        }
+        guard !ports.isEmpty else { return false }
 
         stateLock.lock()
-        tap = port
-        runLoopSource = source
+        taps = ports
+        tapSources = sources
         reenableAttempts = 0
         stateLock.unlock()
 
@@ -179,11 +200,17 @@ final class KeyboardLockEngine {
             self.tapRunLoop = runLoop
             self.stateLock.unlock()
 
-            CFRunLoopAddSource(runLoop, source, .commonModes)
-            CGEvent.tapEnable(tap: port, enable: true)
+            for source in sources {
+                CFRunLoopAddSource(runLoop, source, .commonModes)
+            }
+            for port in ports {
+                CGEvent.tapEnable(tap: port, enable: true)
+            }
             CFRunLoopRun()
 
-            CFRunLoopRemoveSource(runLoop, source, .commonModes)
+            for source in sources {
+                CFRunLoopRemoveSource(runLoop, source, .commonModes)
+            }
         }
         thread.name = "com.fair.keyboardlocker.event-tap"
         thread.qualityOfService = .userInteractive
@@ -199,18 +226,18 @@ final class KeyboardLockEngine {
 
     func stop() {
         stateLock.lock()
-        let port = tap
+        let ports = taps
         let runLoop = tapRunLoop
-        tap = nil
+        taps = []
+        tapSources = []
         tapRunLoop = nil
-        runLoopSource = nil
         tapThread = nil
         _isLocked = false
         trackedModifiers = []
         pinnedCursor = nil
         stateLock.unlock()
 
-        if let port {
+        for port in ports {
             CGEvent.tapEnable(tap: port, enable: false)
             CFMachPortInvalidate(port)
         }
@@ -229,14 +256,16 @@ final class KeyboardLockEngine {
     /// 从任意线程安全地重新启用 tap（系统超时禁用后需要）。
     fileprivate func reenableAfterSystemDisable() {
         stateLock.lock()
-        let port = tap
+        let ports = taps
         let attempts = reenableAttempts
         reenableAttempts = attempts + 1
         stateLock.unlock()
 
-        guard let port else { return }
-        guard attempts < KeyboardLockEngine.maxReenableAttempts else { return }
-        CGEvent.tapEnable(tap: port, enable: true)
+        guard !ports.isEmpty, attempts < KeyboardLockEngine.maxReenableAttempts else { return }
+        // 回调没告诉我们被禁用/恢复的是哪一层，两层都开一遍
+        for port in ports {
+            CGEvent.tapEnable(tap: port, enable: true)
+        }
     }
 
     fileprivate func recordBlockedEvent() {
